@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="rwm">
+<head>
+	<meta charset="utf-8">
+	<title>Results Watcher Manager</title>
+	<script src="js/vendor/jquery-3.1.1.min.js"></script>
+	<script src="js/vendor/angular-1.6.2.min.js"></script>
+	<script src="js/vendor/moment-2.17.1.js"></script>
+	<script src="js/vendor/sockjs-1.1.2.min.js"></script>
+	<script src="js/app.js"></script>
+	<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+	<div ng-controller="mainCtrl">
+		
+		<div ng-if="socketStatus.showBadness && !socketStatus.connected">Websocket Connection Down</div>
+
+		<h1>Results Watcher Manager</h1>
+
+		<p>Current Configuration</p>
+		<ul ng-show="configReady">
+			<li>{{config.File}}</li>
+			<li>{{config.ActiveWatch}}</li>
+			<li>{{config.Servers}}</li>
+		</ul>
+		<ul ng-show="!configReady">
+			<li>Loading...</li>
+		</ul>
+
+		<div ng-show="config.ActiveWatch">
+			<p>Stop File Watch</p>
+			<button ng-click="stopFileWatch()">Stop</button>
+		</div>
+
+		<div ng-show="!config.ActiveWatch">
+			<p>Start File Watch</p>
+			<input ng-model="config.File" style="width:500px"/><br/>
+			<button ng-click="startFileWatch()">Start</button>
+		</div>
+
+		<p>Results Servers</p>
+		<ul>
+			<li ng-repeat="rs in config.Servers">{{rs}} [<a href="javascript:void(0)" ng-click="removeServer(rs)">remove</a>]</li>
+		</ul>
+		<input ng-model="newServer" style="width:500px"/><br/>
+		<button ng-click="addServer()">Add Server</button>
+		
+
+
+	</div>
+
+</body>
+</html>
