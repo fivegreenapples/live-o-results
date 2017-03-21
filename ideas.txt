@@ -1,0 +1,8 @@
+Aide Memoir for Possible Future Development
+-------------------------------------------
+
+Use ini file to store configuration.
+Get entries from event so UI can provide more info about not-yet-finishers.
+Need reconnect handlign should resultserver connection fallover
+
+
