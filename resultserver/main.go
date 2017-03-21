@@ -24,9 +24,13 @@ import (
 func main() {
 
 	httpPort := flag.Uint("port", 0, "HTTP Port")
+	htdocs := flag.String("htdocs", "", "Docroot of Results Web Site")
 	flag.Parse()
 	if *httpPort == 0 {
-		log.Fatalln("No HTTP port specified")
+		log.Fatalln("No HTTP port specified (-port)")
+	}
+	if *htdocs == "" {
+		log.Fatalln("No htdocs provided (-htdocs)")
 	}
 
 	var currentResultSet struct {
@@ -92,7 +96,7 @@ func main() {
 		rpcServer.ServeConn(conn)
 	})
 
-	http.Handle("/results/", http.StripPrefix("/results/", http.FileServer(http.Dir("/Users/ben/Documents/Coding/otheday-ui/results"))))
+	http.Handle("/results/", http.StripPrefix("/results/", http.FileServer(http.Dir(*htdocs))))
 
 	socketsHandler := sockjs.NewHandler("/sockjs", sockjs.DefaultOptions, func(session sockjs.Session) {
 		for {
