@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"reflect"
 	"time"
 
 	"log"
@@ -115,10 +116,16 @@ RANGELOOP:
 				if decodeErr != nil {
 					return
 				}
-				currentResultSet = liveo.ResultDataSet{
+				newResultSet := liveo.ResultDataSet{
 					Results: *newResults,
 					Hash:    "LARK",
 				}
+				if reflect.DeepEqual(currentResultSet, newResultSet) {
+					// ignore results, file hasn't changed
+					log.Println("no change, ignoring")
+					return
+				}
+				currentResultSet = newResultSet
 				for _, s := range allServers {
 					s.submitResults(currentResultSet)
 				}
