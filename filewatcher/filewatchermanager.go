@@ -33,7 +33,7 @@ func newFileWatcherManager(rw *fileWatcher) *fileWatcherManager {
 	rwm.demuxMap["filewatch.start"] = rwmHandler(rwm.doStartFileWatch).withRequestType(reflect.TypeOf(StartFilewatchRequest{}))
 	rwm.demuxMap["filewatch.stop"] = rwm.doStopFileWatch
 
-	http.Handle("/ui/", http.StripPrefix("/ui/", http.FileServer(http.Dir("/Users/ben/Documents/Coding/otheday-ui/watcher-manager"))))
+	http.Handle("/ui/", http.StripPrefix("/ui/", http.FileServer(http.Dir("/Users/ben/Documents/Coding/go/src/github.com/fivegreenapples/live-o-results/filewatcher/manager-ui"))))
 
 	http.HandleFunc("/status", rwm.demuxMap["status.get"].AllowGet())
 	http.HandleFunc("/filewatch/start", rwm.demuxMap["filewatch.start"].AllowPost())
