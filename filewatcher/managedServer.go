@@ -34,7 +34,8 @@ func (m *managedServer) dial() error {
 	if err != nil {
 		return err
 	}
-	httpRequest := "CONNECT " + liveo.RPCEndpoint + " HTTP/1.0\r\n"
+	httpRequest := "GET " + liveo.RPCEndpoint + " HTTP/1.0\r\n"
+	httpRequest += fmt.Sprint("Host: liveo.waoc.org.uk\r\n")
 	httpRequest += fmt.Sprintf("Content-Length: %d\r\n", len(liveo.SharedSecret))
 	httpRequest += "\r\n"
 	httpRequest += liveo.SharedSecret

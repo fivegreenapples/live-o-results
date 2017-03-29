@@ -63,7 +63,7 @@ func main() {
 	}
 
 	http.HandleFunc(liveo.RPCEndpoint, func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != "CONNECT" {
+		if req.Method != "GET" {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			io.WriteString(w, "405 must CONNECT\n")
