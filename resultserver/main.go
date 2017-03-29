@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/fivegreenapples/live-o-results/liveo"
@@ -23,11 +22,11 @@ import (
 
 func main() {
 
-	httpPort := flag.Uint("port", 0, "HTTP Port")
+	listenInterface := flag.String("interface", "", "HTTP Port")
 	htdocs := flag.String("htdocs", "", "Docroot of Results Web Site")
 	flag.Parse()
-	if *httpPort == 0 {
-		log.Fatalln("No HTTP port specified (-port)")
+	if *listenInterface == "" {
+		log.Fatalln("No interface specified (-interface)")
 	}
 	if *htdocs == "" {
 		log.Fatalln("No htdocs provided (-htdocs)")
@@ -63,7 +62,7 @@ func main() {
 	}
 
 	http.HandleFunc(liveo.RPCEndpoint, func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != "CONNECT" {
+		if req.Method != "GET" {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			io.WriteString(w, "405 must CONNECT\n")
@@ -134,7 +133,7 @@ func main() {
 	// Create a server with explicit read and write timeouts
 	//
 	srv := &http.Server{
-		Addr:         "localhost:" + strconv.Itoa(int(*httpPort)),
+		Addr:         *listenInterface,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
