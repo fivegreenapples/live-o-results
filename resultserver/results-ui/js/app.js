@@ -211,19 +211,26 @@ App.controller("mainCtrl", [
 		}, 500)
 		Socket.addEventListener("newResults", function(resultSet) {
 			console.log(resultSet)
-			$scope.results = angular.copy(resultSet.Results)
+			processResultSet(angular.copy(resultSet))
 		}, $scope)
 		Socket.connect()
 
-		// function init() {
-		// 	Socket.sendAPIRequest("status.get").then(function(resp) {
-		// 		$scope.config = resp
-		// 		$scope.configReady = true
-		// 	}, function(reason) {
-		// 		console.log("Failed init: "+reason)
-		// 	})
-		// }
 
+		function processResultSet(resultSet) {
+			resultSet.Results.Courses.forEach(function(course, i) {
+				course.Competitors.forEach(function(competitor) {
+					// Time arrives in nanoseconds!
+					var timeTotalSeconds = Math.floor(competitor.Time / 1000000000)
+					var timeMins = Math.floor(timeTotalSeconds / 60)
+					var timeSeconds = timeTotalSeconds % 60
+					if (timeSeconds <= 9) {
+						timeSeconds = "0"+timeSeconds
+					}
+					competitor.Time = timeMins+":"+timeSeconds
+				})
+			})
+			$scope.results = resultSet.Results
+		}
 
 
 	}

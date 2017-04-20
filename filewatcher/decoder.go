@@ -31,6 +31,12 @@ func decodeResultsFile(file io.Reader) (*liveo.Results, error) {
 
 	if value, ok := xpTitle.String(rootNode); ok {
 		r.Title = value
+		// Trim off preamble
+		reg := regexp.MustCompile("^Results for ")
+		r.Title = reg.ReplaceAllString(r.Title, "")
+		// Trim off postamble
+		reg = regexp.MustCompile(" on [0-9]{1,2}-[a-zA-Z]{3}-20[0-9]{2}$")
+		r.Title = reg.ReplaceAllString(r.Title, "")
 	}
 
 	courses := xpCourse.Iter(rootNode)

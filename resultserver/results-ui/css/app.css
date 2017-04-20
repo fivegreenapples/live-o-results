@@ -1,0 +1,51 @@
+.colors-for-reference {
+	color: rgba(36, 71, 90, 1);
+	color: rgba(72, 169, 166, 1);
+	color: rgba(228, 223, 218, 1);
+	color: rgba(155, 131, 96, 1);
+	color: rgba(193, 102, 107, 1);
+}
+
+body {
+	background-color: rgba(228, 223, 218, 1);
+	color: rgba(36, 71, 90, 1);
+	font-size:16px;
+	font-family: verdana, tahoma, arial, sans-serif;
+}
+
+#header {
+	background-color: rgba(72, 169, 166, 1);
+	color: rgba(228, 223, 218, 1);
+}
+#results-header {
+	font-size:2.4rem;
+	padding:0.5rem 20px;
+}
+
+#results {
+	margin:3rem 20px;
+}
+#results > .course {
+	margin-bottom:3rem;
+}
+
+#results > .course:last-child {
+	margin-bottom:0;
+}
+
+.course {
+	border: 1px solid rgba(36, 71, 90, 1);
+}
+.course .header {
+	background-color: rgba(36, 71, 90, 1);
+	color: rgba(228, 223, 218, 1);
+	font-size:1.5rem;
+	padding: 0.5rem 10px;
+}
+.course .finishers {
+	padding:0.5rem 0;
+}
+.course .finishers tr.finisher td {
+	font-size:1rem;
+	padding: 0.2rem 10px;
+}
