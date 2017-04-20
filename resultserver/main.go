@@ -95,7 +95,7 @@ func main() {
 		rpcServer.ServeConn(conn)
 	})
 
-	http.Handle("/results/", http.StripPrefix("/results/", http.FileServer(http.Dir(*htdocs))))
+	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir(*htdocs))))
 
 	socketsHandler := sockjs.NewHandler("/sockjs", sockjs.DefaultOptions, func(session sockjs.Session) {
 		for {

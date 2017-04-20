@@ -193,11 +193,11 @@ App.controller("mainCtrl", [
 	"socket",
     function($scope, $http, $timeout, Socket) {
 		$scope.socketStatus = {
-			showBadness: false,
+			showError: false,
 			connected: false
 		}
 		$scope.results = {
-			Title: "NOT LOADED"
+			Title: "WAOC Royston Urban Event, 22 April"
 		}
 
 		Socket.addListener("open", function() {
@@ -207,7 +207,7 @@ App.controller("mainCtrl", [
 			$scope.socketStatus.connected = false
 		}, $scope)
 		$timeout(function() {
-			$scope.socketStatus.showBadness = true
+			$scope.socketStatus.showError = true
 		}, 500)
 		Socket.addEventListener("newResults", function(resultSet) {
 			console.log(resultSet)

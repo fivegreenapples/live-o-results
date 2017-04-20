@@ -25,6 +25,9 @@
 		</div>
 
 		<div id="results">
+			<div ng-if="!results.Courses || !results.Courses.length">
+				Results will appear here on the day
+			</div>
 			<div ng-repeat="course in results.Courses" class="course">
 				<div class="header">
 					{{ course.Title }}, {{ course.Info }}
