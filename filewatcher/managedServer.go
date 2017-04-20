@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"encoding/gob"
 	"errors"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"github.com/fivegreenapples/live-o-results/liveo"
 
 	"fmt"
+	"strings"
 )
 
 type managedServer struct {
@@ -30,12 +32,33 @@ a565baf1712cf73eafa88d4ccea182c12ad8f6c1fa0d40184bd52d056082890d
 
 func (m *managedServer) dial() error {
 	var err error
-	conn, err := net.Dial("tcp", m.address)
+	var host, port string
+
+	lastColonPos := strings.LastIndex(m.address, ":")
+	if lastColonPos == -1 {
+		host = m.address
+		port = "80"
+	} else {
+		host, port, err = net.SplitHostPort(m.address)
+		if err != nil {
+			return err
+		}
+	}
+
+	var conn net.Conn
+	if port == "443" {
+		conn, err = tls.Dial("tcp", net.JoinHostPort(host, port), nil)
+	} else {
+		conn, err = net.Dial("tcp", net.JoinHostPort(host, port))
+	}
 	if err != nil {
 		return err
 	}
+
 	httpRequest := "GET " + liveo.RPCEndpoint + " HTTP/1.0\r\n"
-	httpRequest += fmt.Sprint("Host: liveo.waoc.org.uk\r\n")
+	httpRequest += fmt.Sprintf("Host: %s\r\n", host)
+	httpRequest += fmt.Sprint("Connection: Upgrade\r\n")
+	httpRequest += fmt.Sprint("Upgrade: RPC\r\n")
 	httpRequest += fmt.Sprintf("Content-Length: %d\r\n", len(liveo.SharedSecret))
 	httpRequest += "\r\n"
 	httpRequest += liveo.SharedSecret

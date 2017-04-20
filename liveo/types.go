@@ -8,7 +8,8 @@ import (
 var SharedSecret = "a565baf1712cf73eafa88d4ccea182c12ad8f6c1fa0d40184bd52d056082890d"
 
 // RPCConnectedStatus encodes the expected response from an RPC client connect to a ResultServer
-var RPCConnectedStatus = "200 Connected to Otheday"
+// The use of a 101 (switching protocols) response code means we can traverse nginx reverse proxying,
+var RPCConnectedStatus = "101 Connected to Otheday"
 
 // RPCEndpoint stores the RPC endpoint URI path
 var RPCEndpoint = "/api"
