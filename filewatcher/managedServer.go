@@ -89,6 +89,8 @@ func (m *managedServer) dial() error {
 
 func (m *managedServer) submitResults(rs liveo.ResultDataSet) {
 
+	// todo: prevent overlappping calls.
+
 	var network bytes.Buffer        // Stand-in for a network connection
 	enc := gob.NewEncoder(&network) // Will write to network.
 	enc.Encode(rs)
