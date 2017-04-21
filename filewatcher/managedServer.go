@@ -16,6 +16,7 @@ import (
 
 	"fmt"
 	"strings"
+	"time"
 )
 
 type managedServer struct {
@@ -46,10 +47,12 @@ func (m *managedServer) dial() error {
 	}
 
 	var conn net.Conn
+	dialTimeout := 5 * time.Second
 	if port == "443" {
-		conn, err = tls.Dial("tcp", net.JoinHostPort(host, port), nil)
+		dialer := net.Dialer{Timeout: dialTimeout}
+		conn, err = tls.DialWithDialer(&dialer, "tcp", net.JoinHostPort(host, port), nil)
 	} else {
-		conn, err = net.Dial("tcp", net.JoinHostPort(host, port))
+		conn, err = net.DialTimeout("tcp", net.JoinHostPort(host, port), dialTimeout)
 	}
 	if err != nil {
 		return err
@@ -77,6 +80,9 @@ func (m *managedServer) dial() error {
 		return err
 	}
 
+	// Reset deadline so we don't lose the connection
+	conn.SetDeadline(time.Time{})
+
 	m.rpcClient = rpc.NewClient(conn)
 	return nil
 }
@@ -88,9 +94,24 @@ func (m *managedServer) submitResults(rs liveo.ResultDataSet) {
 	enc.Encode(rs)
 	log.Printf("gob encoding of result set is %d bytes.", len(network.Bytes()))
 
-	var reply bool
-	err := m.rpcClient.Call("Api.SubmitLatestResults", &rs, &reply)
-	if err != nil {
-		log.Println("managedServer rpc call error:", err)
+	if m.rpcClient == nil {
+		dialErr := m.dial()
+		if dialErr != nil {
+			log.Println("managedServer: failed to dial results server:", dialErr)
+			return
+		}
 	}
+
+	var reply bool
+	call := m.rpcClient.Go("Api.SubmitLatestResults", &rs, &reply, nil)
+	go func() {
+		<-call.Done
+		if call.Error != nil {
+			log.Println("managedServer: rpc call error:", call.Error)
+			m.rpcClient = nil
+			// possibly we should retry submitting results here but we probably need some
+			// extra work to avoid getting stuck in a loop e.g. where dialling succeeds but
+			// the rpc call fails. For whatever weird reason.
+		}
+	}()
 }

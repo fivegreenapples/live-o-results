@@ -63,7 +63,7 @@ func newFileWatcher() *fileWatcher {
 
 func (r *fileWatcher) run() {
 
-	allServers := map[string]managedServer{}
+	allServers := map[string]*managedServer{}
 	var watchedFile string
 	var fwStopper func()
 	var currentResultSet liveo.ResultDataSet
@@ -157,7 +157,7 @@ RANGELOOP:
 				continue
 			}
 			s.submitResults(currentResultSet)
-			allServers[ev.addr] = s
+			allServers[ev.addr] = &s
 			statusUpdates <- currentStatus()
 			ev.result <- nil
 		case evDropServer:
