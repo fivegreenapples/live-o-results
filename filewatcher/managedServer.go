@@ -76,7 +76,7 @@ func (m *managedServer) dial() error {
 	}
 	if resp.Status != liveo.RPCConnectedStatus {
 		conn.Close()
-		err = errors.New("unexpected HTTP response: " + resp.Status)
+		err = errors.New("managedServer: unexpected HTTP response: " + resp.Status)
 		return err
 	}
 
@@ -92,7 +92,7 @@ func (m *managedServer) submitResults(rs liveo.ResultDataSet) {
 	var network bytes.Buffer        // Stand-in for a network connection
 	enc := gob.NewEncoder(&network) // Will write to network.
 	enc.Encode(rs)
-	log.Printf("gob encoding of result set is %d bytes.", len(network.Bytes()))
+	log.Printf("managedServer: gob encoding of result set is %d bytes.", len(network.Bytes()))
 
 	if m.rpcClient == nil {
 		dialErr := m.dial()
@@ -100,12 +100,29 @@ func (m *managedServer) submitResults(rs liveo.ResultDataSet) {
 			log.Println("managedServer: failed to dial results server:", dialErr)
 			return
 		}
+		log.Println("managedServer: successfully re-dialed when making rpc call")
 	}
 
 	var reply bool
 	call := m.rpcClient.Go("Api.SubmitLatestResults", &rs, &reply, nil)
 	go func() {
-		<-call.Done
+		select {
+		case <-call.Done:
+			// ok
+		case <-time.After(5 * time.Second):
+			// timed out. close the connection...
+			log.Println("managedServer: rpc call timed out")
+			closeErr := m.rpcClient.Close()
+			if closeErr != nil {
+				log.Println("managedServer: error closing connection after rpc call timed out:", closeErr)
+				m.rpcClient = nil
+				return
+			}
+			// ...and wait for completion.
+			// this shouldn't block as we just killed the connection.
+			<-call.Done
+		}
+
 		if call.Error != nil {
 			log.Println("managedServer: rpc call error:", call.Error)
 			m.rpcClient = nil
