@@ -39,14 +39,14 @@ body {
 .course .header {
 	background-color: rgba(36, 71, 90, 1);
 	color: rgba(228, 223, 218, 1);
-	font-size:1.5rem;
+	font-size:2.5rem;
 	padding: 0.5rem 10px;
 }
 .course .finishers {
 	padding:0.5rem 0;
 }
 .course .finishers tr.finisher td {
-	font-size:1rem;
+	font-size:2.3rem;
 	padding: 0.2rem 10px;
 }
 .course .finishers tr.finisher.invalid td {
