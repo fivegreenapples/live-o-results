@@ -16,25 +16,27 @@ var RPCEndpoint = "/api"
 
 // A ResultDataSet represents the entire set of results as exported from AutoDownload. Hash is used
 // for integrity checking following transmission across the internet, and as an identifier for use as
-// ResultDelta.Base
+// ResultDelta.Old
 type ResultDataSet struct {
 	Results Results
-	Hash    string
+	Hash    uint64
 }
 
 // ResultDelta encodes the difference between two ResultDataSets
 type ResultDelta struct {
-	Base       string
-	Title      string
-	NewCourses []struct {
-		Index  int
-		Course Course
-	}
-	NewCompetitor []struct {
-		Course     string
-		Index      int
-		Competitor Competitor
-	}
+	Old         uint64
+	New         uint64
+	Title       *string
+	Courses     *CoursesDelta
+	Competitors *map[int]CompetitorsDelta
+}
+type CoursesDelta struct {
+	Removed map[int]int
+	Added   map[int]Course
+}
+type CompetitorsDelta struct {
+	Removed map[int]int
+	Added   map[int]Competitor
 }
 
 // Results defines a set of orienteering results as published from AutoDownload
@@ -53,19 +55,19 @@ type Course struct {
 // Competitor represents a particular runner and their time and position within a set
 // of results.
 type Competitor struct {
-	Name   string
-	Club   string
-	Time   time.Duration
-	Status Status
+	Name  string
+	Club  string
+	Time  time.Duration
+	Valid bool
 }
 
-// Status encodes a Competitor's finish status
-type Status int
+// // Status encodes a Competitor's finish status
+// type Status int
 
-// Status encodes a Competitors finish status
-const (
-	OK     Status = 0
-	NoTime        = 1 << iota
-	Retired
-	MissPunched
-)
+// // Status encodes a Competitors finish status
+// const (
+// 	OK     Status = 0
+// 	NoTime        = 1 << iota
+// 	Retired
+// 	MissPunched
+// )

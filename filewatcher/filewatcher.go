@@ -15,6 +15,7 @@ import (
 
 	"github.com/fivegreenapples/live-o-results/liveo"
 	"github.com/fivegreenapples/throttledwatcher"
+	"github.com/mitchellh/hashstructure"
 )
 
 type fileWatcher struct {
@@ -116,9 +117,10 @@ RANGELOOP:
 				if decodeErr != nil {
 					return
 				}
+				hash, _ := hashstructure.Hash(newResults, nil)
 				newResultSet := liveo.ResultDataSet{
 					Results: *newResults,
-					Hash:    "LARK",
+					Hash:    hash,
 				}
 				if reflect.DeepEqual(currentResultSet, newResultSet) {
 					// ignore results, file hasn't changed
@@ -156,7 +158,9 @@ RANGELOOP:
 				ev.result <- err
 				continue
 			}
-			s.submitResults(currentResultSet)
+			if currentResultSet.Hash != 0 {
+				s.submitResults(currentResultSet)
+			}
 			allServers[ev.addr] = &s
 			statusUpdates <- currentStatus()
 			ev.result <- nil

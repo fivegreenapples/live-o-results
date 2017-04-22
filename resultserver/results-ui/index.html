@@ -34,8 +34,8 @@
 				</div>
 				<div class="finishers">
 					<table>
-						<tr class="finisher" ng-repeat="competitor in course.Competitors">
-							<td>{{ $index+1 }}</td>
+						<tr class="finisher" ng-repeat="competitor in course.Competitors" ng-class="{invalid:!competitor.Valid}">
+							<td>{{ competitor.Valid ? $index+1 : "" }}</td>
 							<td>{{ competitor.Name }}</td>
 							<td>{{ competitor.Club }}</td>
 							<td>{{ competitor.Time }}</td>

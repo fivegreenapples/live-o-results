@@ -15,13 +15,15 @@ import (
 	"github.com/fivegreenapples/live-o-results/liveo"
 
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
 
 type managedServer struct {
-	address   string
-	rpcClient *rpc.Client
+	address       string
+	rpcClient     *rpc.Client
+	lastResultset *liveo.ResultDataSet
 }
 
 /*
@@ -91,10 +93,19 @@ func (m *managedServer) submitResults(rs liveo.ResultDataSet) {
 
 	// todo: prevent overlappping calls.
 
+	method := "Api.SubmitLatestResults"
+	var args interface{} = &rs
+
+	if m.lastResultset != nil {
+		delta := diffResults(*m.lastResultset, rs)
+		method = "Api.SubmitDelta"
+		args = &delta
+	}
+
 	var network bytes.Buffer        // Stand-in for a network connection
 	enc := gob.NewEncoder(&network) // Will write to network.
-	enc.Encode(rs)
-	log.Printf("managedServer: gob encoding of result set is %d bytes.", len(network.Bytes()))
+	enc.Encode(args)
+	log.Printf("managedServer: gob encoding of data set is %d bytes.", len(network.Bytes()))
 
 	if m.rpcClient == nil {
 		dialErr := m.dial()
@@ -106,7 +117,7 @@ func (m *managedServer) submitResults(rs liveo.ResultDataSet) {
 	}
 
 	var reply bool
-	call := m.rpcClient.Go("Api.SubmitLatestResults", &rs, &reply, nil)
+	call := m.rpcClient.Go(method, args, &reply, nil)
 	go func() {
 		select {
 		case <-call.Done:
@@ -131,6 +142,137 @@ func (m *managedServer) submitResults(rs liveo.ResultDataSet) {
 			// possibly we should retry submitting results here but we probably need some
 			// extra work to avoid getting stuck in a loop e.g. where dialling succeeds but
 			// the rpc call fails. For whatever weird reason.
+			return
 		}
+
+		if reply {
+			// record this result set as the last successful
+			m.lastResultset = &rs
+		} else {
+			// only get here on a failed delta submission. reset lastresultset
+			m.lastResultset = nil
+		}
+
 	}()
+}
+
+func diffResults(A, B liveo.ResultDataSet) liveo.ResultDelta {
+
+	delta := liveo.ResultDelta{
+		Old: A.Hash,
+		New: B.Hash,
+	}
+
+	if A.Results.Title != B.Results.Title {
+		delta.Title = &(B.Results.Title)
+	}
+
+	coursesA, coursesB := []string{}, []string{}
+	coursesBMappings := map[string]liveo.Course{} // so we can find new courses added in B
+	courseBtoAMappings := map[int]int{}           // so we can compare competitors in common courses
+	for i, c := range A.Results.Courses {
+		coursesA = append(coursesA, c.Title+"|"+c.Info)
+		courseBtoAMappings[i] = i // init map assuming courses don't differ
+	}
+	for _, c := range B.Results.Courses {
+		coursesB = append(coursesB, c.Title+"|"+c.Info)
+		coursesBMappings[c.Title+"|"+c.Info] = c
+	}
+	coursesCommon := findLCS(coursesA, coursesB)
+	if len(coursesCommon) != len(coursesA) || len(coursesCommon) != len(coursesB) {
+		// the courses differ
+		coursesDelta := liveo.CoursesDelta{
+			Removed: map[int]int{},
+			Added:   map[int]liveo.Course{},
+		}
+		courseBtoAMappings = map[int]int{} // reset these mappings
+
+		cursorA, cursorB, cursorCom := 0, 0, 0
+		for cursorCom < len(coursesCommon) || cursorA < len(coursesA) || cursorB < len(coursesB) {
+			for cursorCom < len(coursesCommon) &&
+				cursorA < len(coursesA) &&
+				cursorB < len(coursesB) &&
+				coursesCommon[cursorCom] == coursesA[cursorA] &&
+				coursesCommon[cursorCom] == coursesB[cursorB] {
+				// common item
+				// store mapping for competitor comparison
+				courseBtoAMappings[cursorB] = cursorA
+				// move on all cursors
+				cursorCom++
+				cursorA++
+				cursorB++
+			}
+			for cursorA < len(coursesA) &&
+				(cursorCom >= len(coursesCommon) || coursesCommon[cursorCom] != coursesA[cursorA]) {
+				coursesDelta.Removed[cursorA] = 0
+				cursorA++
+			}
+			for cursorB < len(coursesB) &&
+				(cursorCom >= len(coursesCommon) || coursesCommon[cursorCom] != coursesB[cursorB]) {
+				coursesDelta.Added[cursorB] = coursesBMappings[coursesB[cursorB]]
+				cursorB++
+			}
+		}
+
+		delta.Courses = &coursesDelta
+	}
+
+	// Competitor diff analysis. Same as above but for each common group
+	// This diff analysis could do with refactor and generics
+
+	for bIndex, aIndex := range courseBtoAMappings {
+
+		courseA := A.Results.Courses[aIndex]
+		courseB := B.Results.Courses[bIndex]
+		competitorsA, competitorsB := []string{}, []string{}
+		competitorsBMappings := map[string]liveo.Competitor{} // so we can find new competitors added in B
+		for _, c := range courseA.Competitors {
+			competitorsA = append(competitorsA, c.Name+"|"+c.Club+"|"+c.Time.String()+"|"+strconv.FormatBool(c.Valid))
+		}
+		for _, c := range courseB.Competitors {
+			ident := c.Name + "|" + c.Club + "|" + c.Time.String() + "|" + strconv.FormatBool(c.Valid)
+			competitorsB = append(competitorsB, ident)
+			competitorsBMappings[ident] = c
+		}
+		competitorsCommon := findLCS(competitorsA, competitorsB)
+		if len(competitorsCommon) != len(competitorsA) || len(competitorsCommon) != len(competitorsB) {
+			// the competitors differ
+			competitorsDelta := liveo.CompetitorsDelta{
+				Removed: map[int]int{},
+				Added:   map[int]liveo.Competitor{},
+			}
+
+			cursorA, cursorB, cursorCom := 0, 0, 0
+			for cursorCom < len(competitorsCommon) || cursorA < len(competitorsA) || cursorB < len(competitorsB) {
+				for cursorCom < len(competitorsCommon) &&
+					cursorA < len(competitorsA) &&
+					cursorB < len(competitorsB) &&
+					competitorsCommon[cursorCom] == competitorsA[cursorA] &&
+					competitorsCommon[cursorCom] == competitorsB[cursorB] {
+					// common item
+					// move on all cursors
+					cursorCom++
+					cursorA++
+					cursorB++
+				}
+				for cursorA < len(competitorsA) &&
+					(cursorCom >= len(competitorsCommon) || competitorsCommon[cursorCom] != competitorsA[cursorA]) {
+					competitorsDelta.Removed[cursorA] = 0
+					cursorA++
+				}
+				for cursorB < len(competitorsB) &&
+					(cursorCom >= len(competitorsCommon) || competitorsCommon[cursorCom] != competitorsB[cursorB]) {
+					competitorsDelta.Added[cursorB] = competitorsBMappings[competitorsB[cursorB]]
+					cursorB++
+				}
+			}
+
+			if delta.Competitors == nil {
+				delta.Competitors = &map[int]liveo.CompetitorsDelta{}
+			}
+			(*delta.Competitors)[bIndex] = competitorsDelta
+		}
+	}
+
+	return delta
 }

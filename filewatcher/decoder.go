@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"io"
+	"sort"
 	"strconv"
 
 	"github.com/fivegreenapples/live-o-results/liveo"
@@ -74,9 +75,21 @@ func decodeCourse(cn *xmlpath.Node) (*liveo.Course, error) {
 		}
 		c.Competitors = append(c.Competitors, *competitor)
 	}
+	sort.Slice(c.Competitors, func(i, j int) bool {
+		if (c.Competitors[i].Valid && c.Competitors[j].Valid) ||
+			(!c.Competitors[i].Valid && !c.Competitors[j].Valid) {
+			return c.Competitors[i].Time < c.Competitors[j].Time
+		}
+		if c.Competitors[i].Valid {
+			return true
+		}
+		return false
+	})
 	return &c, nil
 }
 
+var reValidPosition *regexp.Regexp
+var xpCompetitorPosition *xmlpath.Path
 var xpCompetitorName *xmlpath.Path
 var xpCompetitorClub *xmlpath.Path
 var xpCompetitorTime *xmlpath.Path
@@ -85,6 +98,9 @@ func decodeCompetitor(cn *xmlpath.Node) (*liveo.Competitor, error) {
 
 	c := liveo.Competitor{}
 
+	if value, ok := xpCompetitorPosition.String(cn); ok {
+		c.Valid = reValidPosition.MatchString(value)
+	}
 	if value, ok := xpCompetitorName.String(cn); ok {
 		c.Name = value
 	}
@@ -94,7 +110,7 @@ func decodeCompetitor(cn *xmlpath.Node) (*liveo.Competitor, error) {
 	if value, ok := xpCompetitorTime.String(cn); ok {
 		compTime, err := decodeTime(value)
 		if err != nil {
-			c.Status = c.Status | liveo.NoTime
+			c.Valid = false
 		}
 		c.Time = compTime
 	}
@@ -152,9 +168,12 @@ func initDecode() {
 	// xpCourseCompetitors = xmlpath.MustCompile("table[@class='data']/tr[position()>1]") position() isn't supported
 	xpCourseCompetitors = xmlpath.MustCompile("table[@class='data']/tr")
 
+	xpCompetitorPosition = xmlpath.MustCompile("td[1]")
 	xpCompetitorName = xmlpath.MustCompile("td[2]")
 	xpCompetitorClub = xmlpath.MustCompile("td[3]")
 	xpCompetitorTime = xmlpath.MustCompile("td[5]")
+
+	reValidPosition = regexp.MustCompile(`^\W*[0-9]+(st|nd|rd|th)\W*$`)
 
 	reHourMinuteSecond = regexp.MustCompile(`^\W*([0-9]+):([0-9]+):([0-9]+)\W*$`)
 	reMinuteSecond = regexp.MustCompile(`^\W*([0-9]+):([0-9]+)\W*$`)
