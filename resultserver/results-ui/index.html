@@ -35,8 +35,8 @@
 					ng-repeat="course in results.Courses" 
 					ng-class="{notvisible:!courseVisibility[course.Title]}"
 					ng-click="courseVisibility[course.Title]=!courseVisibility[course.Title];storeCourseVisibility()">
-					{{course.Title}}
 					<span class="show-hide">{{courseVisibility[course.Title] ? "HIDE" : "SHOW"}}</span>
+					{{course.Title}}
 				</div>
 			</div>
 			<div style="margin-bottom:20px;clear:both;"></div>
