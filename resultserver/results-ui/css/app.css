@@ -52,4 +52,23 @@ body {
 .course .finishers tr.finisher.invalid td {
 	color: rgba(155, 131, 96, 1);
 }
-
+#course-menu .menu-option {
+	border:1px solid black;
+	padding:8px;
+	cursor:pointer;
+	float:left;
+	width:30%;
+	font-size:1.5rem;
+	margin:5px;
+	border-radius:5px;
+}
+#course-menu .menu-option.notvisible {
+	color: rgba(155, 131, 96, 1);
+}
+#course-menu .menu-option .show-hide {
+	font-size:1rem;
+	float:right;
+}
+#course-menu .menu-option.header {
+	width:45%;
+}

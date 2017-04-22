@@ -200,6 +200,9 @@ App.controller("mainCtrl", [
 			Title: "WAOC Royston Urban Event, 22 April"
 		}
 
+		$scope.courseVisibility = {}
+		loadCourseVisibility()
+
 		Socket.addListener("open", function() {
 			$scope.socketStatus.connected = true
 		}, $scope)
@@ -220,6 +223,9 @@ App.controller("mainCtrl", [
 			if (!resultSet || !resultSet.Results || !resultSet.Results.Courses ) return
 
 			resultSet.Results.Courses.forEach(function(course, i) {
+				if (!(course.Title in $scope.courseVisibility)) {
+					$scope.courseVisibility[course.Title] = true
+				}
 				if (!course.Competitors) return 
 				course.Competitors.forEach(function(competitor) {
 					// Time arrives in nanoseconds!
@@ -233,9 +239,25 @@ App.controller("mainCtrl", [
 				})
 			})
 			$scope.results = resultSet.Results
+			$scope.storeCourseVisibility()
 		}
 
-
+		$scope.toggleAll = function(val) {
+			for (k in $scope.courseVisibility) {
+				$scope.courseVisibility[k] = val
+			}
+			$scope.storeCourseVisibility()
+		}
+		 $scope.storeCourseVisibility = function() {
+			window.localStorage.setItem("cv", JSON.stringify($scope.courseVisibility))
+		}
+		function loadCourseVisibility() {
+			var cv = window.localStorage.getItem("cv")
+			if (cv) {
+				var cvObj = JSON.parse(cv)
+				$scope.courseVisibility = cvObj
+			}
+		}
 	}
 ])
 

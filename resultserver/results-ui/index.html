@@ -28,12 +28,28 @@
 			<div ng-if="!results.Courses || !results.Courses.length">
 				Results will appear here on the day
 			</div>
-			<div ng-repeat="course in results.Courses" class="course">
+			<div id="course-menu">
+				<div class="menu-option header" ng-click="toggleAll(true)">SHOW ALL</div>
+				<div class="menu-option header" ng-click="toggleAll(false)">HIDE ALL</div>
+				<div class="menu-option" 
+					ng-repeat="course in results.Courses" 
+					ng-class="{notvisible:!courseVisibility[course.Title]}"
+					ng-click="courseVisibility[course.Title]=!courseVisibility[course.Title];storeCourseVisibility()">
+					{{course.Title}}
+					<span class="show-hide">{{courseVisibility[course.Title] ? "HIDE" : "SHOW"}}</span>
+				</div>
+			</div>
+			<div style="margin-bottom:20px;clear:both;"></div>
+
+			<div ng-repeat="course in results.Courses" class="course" ng-show="courseVisibility[course.Title]">
 				<div class="header">
 					{{ course.Title }}, {{ course.Info }}
 				</div>
 				<div class="finishers">
 					<table>
+						<tr class="finisher invalid" ng-if="!course.Competitors || course.Competitors.length==0">
+							<td>No runners downloaded yet.</td>
+						</tr>
 						<tr class="finisher" ng-repeat="competitor in course.Competitors" ng-class="{invalid:!competitor.Valid}">
 							<td>{{ competitor.Valid ? $index+1 : "" }}</td>
 							<td>{{ competitor.Name }}</td>
