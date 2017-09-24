@@ -6,7 +6,7 @@ import (
 
 func main() {
 	resultsFile := "/Users/ben/Documents/Orienteering/British Sprints/Live Results/index.html"
-	resultsServer := "test.o-results.live"
+	resultsServers := []string{"127.0.0.1:9000"}
 
 	rw := newFileWatcher()
 	newFileWatcherManager(rw)
@@ -16,9 +16,11 @@ func main() {
 		log.Println(watchErr)
 	}
 
-	rsErr := rw.addResultsServer(resultsServer)
-	if rsErr != nil {
-		log.Println(rsErr)
+	for _, s := range resultsServers {
+		rsErr := rw.addResultsServer(s)
+		if rsErr != nil {
+			log.Println(rsErr)
+		}
 	}
 
 	rw.wait()

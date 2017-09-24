@@ -115,6 +115,7 @@ RANGELOOP:
 				log.Println("watch event for", ev.file)
 				newResults, decodeErr := decodeResultsFile(strings.NewReader(f))
 				if decodeErr != nil {
+					log.Println("File decode error: ", decodeErr.Error())
 					return
 				}
 				hash, _ := hashstructure.Hash(newResults, nil)
