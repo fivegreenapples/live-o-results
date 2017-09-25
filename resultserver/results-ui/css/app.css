@@ -45,9 +45,15 @@ body {
 .course .finishers {
 	padding:0.5rem 0;
 }
+.course .finishers table {
+	width:100%;
+}
 .course .finishers tr.finisher td {
 	font-size:2.3rem;
 	padding: 0.2rem 10px;
+}
+.course .finishers tr.finisher td.time {
+	text-align: right;
 }
 .course .finishers tr.finisher.invalid td {
 	color: rgba(155, 131, 96, 1);

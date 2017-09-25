@@ -25,7 +25,7 @@ func decodeResultsFile(file io.Reader) (*liveo.Results, error) {
 
 	r := liveo.Results{}
 
-	rootNode, err := xmlpath.Parse(file)
+	rootNode, err := xmlpath.ParseHTML(file)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func decodeResultsFile(file io.Reader) (*liveo.Results, error) {
 		reg := regexp.MustCompile("^Results for ")
 		r.Title = reg.ReplaceAllString(r.Title, "")
 		// Trim off postamble
-		reg = regexp.MustCompile(" on [0-9]{1,2}-[a-zA-Z]{3}-20[0-9]{2}$")
+		reg = regexp.MustCompile(" - [0-9]{1,2}-[a-zA-Z]{3}-20[0-9]{2}$")
 		r.Title = reg.ReplaceAllString(r.Title, "")
 	}
 
@@ -67,7 +67,6 @@ func decodeCourse(cn *xmlpath.Node) (*liveo.Course, error) {
 		c.Info = value
 	}
 	competitors := xpCourseCompetitors.Iter(cn)
-	competitors.Next() // pop the header row
 	for competitors.Next() {
 		competitor, err := decodeCompetitor(competitors.Node())
 		if err != nil {
@@ -92,6 +91,7 @@ var reValidPosition *regexp.Regexp
 var xpCompetitorPosition *xmlpath.Path
 var xpCompetitorName *xmlpath.Path
 var xpCompetitorClub *xmlpath.Path
+var xpCompetitorAgeClass *xmlpath.Path
 var xpCompetitorTime *xmlpath.Path
 
 func decodeCompetitor(cn *xmlpath.Node) (*liveo.Competitor, error) {
@@ -106,6 +106,9 @@ func decodeCompetitor(cn *xmlpath.Node) (*liveo.Competitor, error) {
 	}
 	if value, ok := xpCompetitorClub.String(cn); ok {
 		c.Club = value
+	}
+	if value, ok := xpCompetitorAgeClass.String(cn); ok {
+		c.AgeClass = value
 	}
 	if value, ok := xpCompetitorTime.String(cn); ok {
 		compTime, err := decodeTime(value)
@@ -160,17 +163,17 @@ func asciiToDuration(s string) time.Duration {
 }
 
 func initDecode() {
-	xpTitle = xmlpath.MustCompile("/html/body/div[@id='header']/div[@id='header-right']/div[@id='title']/h1")
-	xpCourse = xmlpath.MustCompile("/html/body/div[@id='main']/div[@class='course']")
+	xpTitle = xmlpath.MustCompile("/html/body/div[@id='container']/div[@id='container_b']/div[@id='container_bp']/h2")
+	xpCourse = xmlpath.MustCompile("/html/body/div[@id='container']/div[@id='container_b']/div[@id='container_bp']/fieldset[1]/div[@class='resultsblock']")
 
-	xpCourseTitle = xmlpath.MustCompile("div[@class='course-title']/h2")
-	xpCourseInfo = xmlpath.MustCompile("p[@class='course-info']")
-	// xpCourseCompetitors = xmlpath.MustCompile("table[@class='data']/tr[position()>1]") position() isn't supported
-	xpCourseCompetitors = xmlpath.MustCompile("table[@class='data']/tr")
+	xpCourseTitle = xmlpath.MustCompile("div[@class='resultsblock-title']/h2")
+	xpCourseInfo = xmlpath.MustCompile("p[@class='resultsblock-info']")
+	xpCourseCompetitors = xmlpath.MustCompile("table[@class='data_wide']/tbody/tr")
 
 	xpCompetitorPosition = xmlpath.MustCompile("td[1]")
 	xpCompetitorName = xmlpath.MustCompile("td[2]")
 	xpCompetitorClub = xmlpath.MustCompile("td[3]")
+	xpCompetitorAgeClass = xmlpath.MustCompile("td[4]")
 	xpCompetitorTime = xmlpath.MustCompile("td[5]")
 
 	reValidPosition = regexp.MustCompile(`^\W*[0-9]+(st|nd|rd|th)\W*$`)

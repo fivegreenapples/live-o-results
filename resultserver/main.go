@@ -108,7 +108,7 @@ func main() {
 					Msg: struct {
 						Name string
 						Data interface{}
-					}{"newResults", currentResultSet.ResultDataSet},
+					}{"newResults", r},
 				})
 				session.Send(string(currentResultsMsg))
 			}

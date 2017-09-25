@@ -197,7 +197,7 @@ App.controller("mainCtrl", [
 			connected: false
 		}
 		$scope.results = {
-			Title: "WAOC Royston Urban Event, 22 April"
+			Title: "Event Title, Event Date"
 		}
 
 		$scope.courseVisibility = {}
@@ -220,24 +220,26 @@ App.controller("mainCtrl", [
 
 
 		function processResultSet(resultSet) {
-			if (!resultSet || !resultSet.Results || !resultSet.Results.Courses ) return
+			if (!resultSet || !resultSet.Results ) return
 
-			resultSet.Results.Courses.forEach(function(course, i) {
-				if (!(course.Title in $scope.courseVisibility)) {
-					$scope.courseVisibility[course.Title] = true
-				}
-				if (!course.Competitors) return 
-				course.Competitors.forEach(function(competitor) {
-					// Time arrives in nanoseconds!
-					var timeTotalSeconds = Math.floor(competitor.Time / 1000000000)
-					var timeMins = Math.floor(timeTotalSeconds / 60)
-					var timeSeconds = timeTotalSeconds % 60
-					if (timeSeconds <= 9) {
-						timeSeconds = "0"+timeSeconds
+			if (resultSet.Results.Courses) {
+				resultSet.Results.Courses.forEach(function(course, i) {
+					if (!(course.Title in $scope.courseVisibility)) {
+						$scope.courseVisibility[course.Title] = true
 					}
-					competitor.Time = timeMins+":"+timeSeconds
+					if (!course.Competitors) return 
+					course.Competitors.forEach(function(competitor) {
+						// Time arrives in nanoseconds!
+						var timeTotalSeconds = Math.floor(competitor.Time / 1000000000)
+						var timeMins = Math.floor(timeTotalSeconds / 60)
+						var timeSeconds = timeTotalSeconds % 60
+						if (timeSeconds <= 9) {
+							timeSeconds = "0"+timeSeconds
+						}
+						competitor.Time = timeMins+":"+timeSeconds
+					})
 				})
-			})
+			}
 			$scope.results = resultSet.Results
 			$scope.storeCourseVisibility()
 		}

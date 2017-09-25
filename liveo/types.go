@@ -55,10 +55,11 @@ type Course struct {
 // Competitor represents a particular runner and their time and position within a set
 // of results.
 type Competitor struct {
-	Name  string
-	Club  string
-	Time  time.Duration
-	Valid bool
+	Name     string
+	AgeClass string
+	Club     string
+	Time     time.Duration
+	Valid    bool
 }
 
 // // Status encodes a Competitor's finish status
