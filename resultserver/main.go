@@ -38,8 +38,10 @@ func main() {
 	}
 	var resultsWatchers struct {
 		sync.RWMutex
-		w []func(liveo.ResultDelta)
+		w map[string]func(liveo.ResultDelta)
 	}
+	resultsWatchers.w = map[string]func(liveo.ResultDelta){}
+
 	rr := newResultsReceiver(func(r liveo.ResultDataSet) {
 		currentResultSet.RLock()
 		delta := currentResultSet.ResultDataSet.DeltaTo(r)
@@ -130,7 +132,7 @@ func main() {
 			session.Send(string(evMsg))
 		}
 		resultsWatchers.Lock()
-		resultsWatchers.w = append(resultsWatchers.w, sendDelta)
+		resultsWatchers.w[session.ID()] = sendDelta
 		resultsWatchers.Unlock()
 
 		// Some handler for incoming messages - this seems pointless
@@ -147,6 +149,10 @@ func main() {
 			}
 			break
 		}
+
+		resultsWatchers.Lock()
+		delete(resultsWatchers.w, session.ID())
+		resultsWatchers.Unlock()
 
 		log.Println("Socket session ended", session.ID())
 	})
