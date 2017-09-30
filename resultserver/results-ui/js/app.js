@@ -179,6 +179,9 @@ App.service("socket", [
 				}
 				return apiRequests[tag].promise
 			}
+			,sendRawMessage: function(msg) {
+				return sendMessage(msg)
+			}
 		}
 		return service
 
@@ -190,13 +193,14 @@ App.service("results", [function() {
 	var service = {
 		addDelta: function(hash, results, delta) {
 
-			// if (hash != delta.Old) {
-			// 	return false
-			// }
+			if (hash != delta.Old) {
+				console.log("Delta.Old didn't match current result hash.", delta.Old, hash)
+				return false
+			}
 
 			// clone current result set
 			var newResultSet = {
-				Hash:    hash,
+				Hash:    delta.New,
 				Results: angular.copy(results)
 			}
 
@@ -210,16 +214,19 @@ App.service("results", [function() {
 				var toAdd = Object.keys(delta.Courses.Added).length
 				newResultSet.Results.Courses = []
 				while (toAdd > 0 || (results.Courses && cursorA < results.Courses.length)) {
-					if (delta.Courses.Added[cursorB]) {
+					if (toAdd > 0 && delta.Courses.Added[cursorB]) {
 						newResultSet.Results.Courses.push(delta.Courses.Added[cursorB])
 						toAdd--
 						cursorB++
 						continue
 					}
 
-					if (!delta.Courses.Removed.hasOwnProperty(cursorA)) {
-						newResultSet.Results.Courses.push(results.Courses[cursorA])
+					if (results.Courses && cursorA < results.Courses.length) {
+						if (!delta.Courses.Removed.hasOwnProperty(cursorA)) {
+							newResultSet.Results.Courses.push(results.Courses[cursorA])
+						}
 					}
+
 					cursorA++
 					cursorB++
 				}
@@ -233,15 +240,19 @@ App.service("results", [function() {
 					var oldSet = newResultSet.Results.Courses[courseIndex].Competitors
 					var newSet = []
 					while (toAdd > 0 || cursorA < oldSet.length) {
-						if (compDelta.Added[cursorB]) {
+						if (toAdd > 0 && compDelta.Added[cursorB]) {
 							newSet.push(compDelta.Added[cursorB])
 							toAdd--
 							cursorB++
 							continue
 						}
-						if (!compDelta.Removed.hasOwnProperty(cursorA)) {
-							newSet.push(oldSet[cursorA])
+
+						if (cursorA < oldSet.length) {
+							if (!compDelta.Removed.hasOwnProperty(cursorA)) {
+								newSet.push(oldSet[cursorA])
+							}
 						}
+
 						cursorA++
 						cursorB++
 					}
@@ -277,6 +288,7 @@ App.controller("mainCtrl", [
 
 		Socket.addListener("open", function() {
 			$scope.socketStatus.connected = true
+			Socket.sendRawMessage("RequestResults")
 		}, $scope)
 		Socket.addListener("close", function() {
 			$scope.socketStatus.connected = false
@@ -293,7 +305,8 @@ App.controller("mainCtrl", [
 			var newResultSet = Results.addDelta($scope.resultsHash, $scope.results, resultDelta)
 			if (!newResultSet) {
 				// need to request a full submission
-				console.log("Problem adding delta; todo: request complete resultset")
+				console.log("Requesting new results")
+				Socket.sendRawMessage("RequestResults")
 				return
 			}
 			console.log("Calculated Results", newResultSet)

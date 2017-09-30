@@ -42,9 +42,7 @@ func main() {
 	}
 	rr := newResultsReceiver(func(r liveo.ResultDataSet) {
 		currentResultSet.RLock()
-		log.Println("Calculating delta", currentResultSet.ResultDataSet)
 		delta := currentResultSet.ResultDataSet.DeltaTo(r)
-		log.Println(delta)
 		currentResultSet.RUnlock()
 
 		currentResultSet.Lock()
@@ -110,37 +108,47 @@ func main() {
 		}
 	}
 	socketsHandler := sockjs.NewHandler("/sockjs", sockjs.DefaultOptions, func(session sockjs.Session) {
-		for {
 
-			// Send full results immediately on socket connect
-			currentResultSet.RLock()
+		log.Println("Socket session started", session.ID())
+
+		var sendResults = func(res liveo.ResultDataSet) {
 			ev := socketEventMsg{}
 			ev.Type = "Event"
 			ev.Msg.Name = "NewResults"
-			ev.Msg.Data = currentResultSet.ResultDataSet
+			ev.Msg.Data = res
 			evMsg, _ := json.Marshal(&ev)
 			session.Send(string(evMsg))
-			currentResultSet.RUnlock()
+		}
 
-			// Set up watcher to send deltas for new results
-			var sendDelta = func(delta liveo.ResultDelta) {
-				ev := socketEventMsg{}
-				ev.Type = "Event"
-				ev.Msg.Name = "NewDelta"
-				ev.Msg.Data = delta
-				evMsg, _ := json.Marshal(&ev)
-				session.Send(string(evMsg))
-			}
-			resultsWatchers.Lock()
-			resultsWatchers.w = append(resultsWatchers.w, sendDelta)
-			resultsWatchers.Unlock()
+		// Set up watcher to send deltas for new results
+		var sendDelta = func(delta liveo.ResultDelta) {
+			ev := socketEventMsg{}
+			ev.Type = "Event"
+			ev.Msg.Name = "NewDelta"
+			ev.Msg.Data = delta
+			evMsg, _ := json.Marshal(&ev)
+			session.Send(string(evMsg))
+		}
+		resultsWatchers.Lock()
+		resultsWatchers.w = append(resultsWatchers.w, sendDelta)
+		resultsWatchers.Unlock()
 
-			// Some handler for incoming messages - this seems pointless
-			if msg, err := session.Recv(); err == nil {
-				session.Send(msg + msg)
+		// Some handler for incoming messages - this seems pointless
+		var sockRecvErr error
+		var msg string
+		for {
+			if msg, sockRecvErr = session.Recv(); sockRecvErr == nil {
+				if msg == "RequestResults" {
+					currentResultSet.RLock()
+					sendResults(currentResultSet.ResultDataSet)
+					currentResultSet.RUnlock()
+				}
+				continue
 			}
 			break
 		}
+
+		log.Println("Socket session ended", session.ID())
 	})
 	http.Handle("/sockjs/", socketsHandler)
 

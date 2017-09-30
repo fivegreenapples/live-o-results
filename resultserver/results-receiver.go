@@ -63,18 +63,23 @@ RANGELOOP:
 				toAdd := len(ev.delta.Courses.Added)
 				newResultSet.Results.Courses = []liveo.Course{}
 				for toAdd > 0 || cursorA < len(currentResultSet.Results.Courses) {
-					c, found := ev.delta.Courses.Added[cursorB]
-					if found {
-						newResultSet.Results.Courses = append(newResultSet.Results.Courses, c)
-						toAdd--
-						cursorB++
-						continue
+					if toAdd > 0 {
+						c, found := ev.delta.Courses.Added[cursorB]
+						if found {
+							newResultSet.Results.Courses = append(newResultSet.Results.Courses, c)
+							toAdd--
+							cursorB++
+							continue
+						}
 					}
 
-					_, removed := ev.delta.Courses.Removed[cursorA]
-					if !removed {
-						newResultSet.Results.Courses = append(newResultSet.Results.Courses, currentResultSet.Results.Courses[cursorA])
+					if cursorA < len(currentResultSet.Results.Courses) {
+						_, removed := ev.delta.Courses.Removed[cursorA]
+						if !removed {
+							newResultSet.Results.Courses = append(newResultSet.Results.Courses, currentResultSet.Results.Courses[cursorA])
+						}
 					}
+
 					cursorA++
 					cursorB++
 				}
@@ -88,18 +93,23 @@ RANGELOOP:
 					oldSet := newResultSet.Results.Courses[courseIndex].Competitors
 					newSet := []liveo.Competitor{}
 					for toAdd > 0 || cursorA < len(oldSet) {
-						c, found := compDelta.Added[cursorB]
-						if found {
-							newSet = append(newSet, c)
-							toAdd--
-							cursorB++
-							continue
+						if toAdd > 0 {
+							c, found := compDelta.Added[cursorB]
+							if found {
+								newSet = append(newSet, c)
+								toAdd--
+								cursorB++
+								continue
+							}
 						}
 
-						_, removed := compDelta.Removed[cursorA]
-						if !removed {
-							newSet = append(newSet, oldSet[cursorA])
+						if cursorA < len(oldSet) {
+							_, removed := compDelta.Removed[cursorA]
+							if !removed {
+								newSet = append(newSet, oldSet[cursorA])
+							}
 						}
+
 						cursorA++
 						cursorB++
 					}
