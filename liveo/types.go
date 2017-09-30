@@ -181,8 +181,8 @@ func (A ResultDataSet) Clone() ResultDataSet {
 
 // ResultDelta encodes the difference between two ResultDataSets
 type ResultDelta struct {
-	Old         uint64
-	New         uint64
+	Old         uint64                    `json:"-"`
+	New         uint64                    `json:"-"`
 	Title       *string                   `json:",omitempty"`
 	Courses     *CoursesDelta             `json:",omitempty"`
 	Competitors *map[int]CompetitorsDelta `json:",omitempty"`
