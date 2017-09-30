@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/fivegreenapples/live-o-results/liveo"
 	"github.com/mitchellh/hashstructure"
@@ -51,7 +52,7 @@ RANGELOOP:
 			}
 
 			// clone current result set
-			newResultSet := currentResultSet
+			newResultSet := currentResultSet.Clone()
 			// copy over updated details
 			if ev.delta.Title != nil {
 				newResultSet.Results.Title = *ev.delta.Title
@@ -109,7 +110,7 @@ RANGELOOP:
 			// check resulting hash
 			hash, _ := hashstructure.Hash(newResultSet.Results, nil)
 			if hash != ev.delta.New {
-				ev.result <- errors.New("patch results didn't match expected hash")
+				ev.result <- fmt.Errorf("patch results didn't match expected hash. Expected %d vs calculated %d", ev.delta.New, hash)
 				continue
 			}
 

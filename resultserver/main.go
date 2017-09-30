@@ -38,20 +38,25 @@ func main() {
 	}
 	var resultsWatchers struct {
 		sync.RWMutex
-		w []func(liveo.ResultDataSet)
+		w []func(liveo.ResultDelta)
 	}
 	rr := newResultsReceiver(func(r liveo.ResultDataSet) {
-		log.Println("Storing new results")
+		currentResultSet.RLock()
+		log.Println("Calculating delta", currentResultSet.ResultDataSet)
+		delta := currentResultSet.ResultDataSet.DeltaTo(r)
+		log.Println(delta)
+		currentResultSet.RUnlock()
+
 		currentResultSet.Lock()
+		log.Println("Storing new results")
 		currentResultSet.ResultDataSet = r
 		currentResultSet.Unlock()
-		currentResultSet.RLock()
+
 		resultsWatchers.RLock()
 		for _, watcher := range resultsWatchers.w {
-			watcher(currentResultSet.ResultDataSet)
+			watcher(delta)
 		}
 		resultsWatchers.RUnlock()
-		currentResultSet.RUnlock()
 	})
 	rrPublicAPI := ReceiverAPI{rr}
 
@@ -97,30 +102,40 @@ func main() {
 
 	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir(*htdocs))))
 
+	type socketEventMsg struct {
+		Type string
+		Msg  struct {
+			Name string
+			Data interface{}
+		}
+	}
 	socketsHandler := sockjs.NewHandler("/sockjs", sockjs.DefaultOptions, func(session sockjs.Session) {
 		for {
-			var sendNewResults = func(r liveo.ResultDataSet) {
-				currentResultsMsg, _ := json.Marshal(&struct {
-					Type string
-					Msg  interface{}
-				}{
-					Type: "Event",
-					Msg: struct {
-						Name string
-						Data interface{}
-					}{"newResults", r},
-				})
-				session.Send(string(currentResultsMsg))
-			}
-			currentResultSet.RLock()
-			copyCurrentResultSet := currentResultSet.ResultDataSet
-			currentResultSet.RUnlock()
-			sendNewResults(copyCurrentResultSet)
 
+			// Send full results immediately on socket connect
+			currentResultSet.RLock()
+			ev := socketEventMsg{}
+			ev.Type = "Event"
+			ev.Msg.Name = "NewResults"
+			ev.Msg.Data = currentResultSet.ResultDataSet
+			evMsg, _ := json.Marshal(&ev)
+			session.Send(string(evMsg))
+			currentResultSet.RUnlock()
+
+			// Set up watcher to send deltas for new results
+			var sendDelta = func(delta liveo.ResultDelta) {
+				ev := socketEventMsg{}
+				ev.Type = "Event"
+				ev.Msg.Name = "NewDelta"
+				ev.Msg.Data = delta
+				evMsg, _ := json.Marshal(&ev)
+				session.Send(string(evMsg))
+			}
 			resultsWatchers.Lock()
-			resultsWatchers.w = append(resultsWatchers.w, sendNewResults)
+			resultsWatchers.w = append(resultsWatchers.w, sendDelta)
 			resultsWatchers.Unlock()
 
+			// Some handler for incoming messages - this seems pointless
 			if msg, err := session.Recv(); err == nil {
 				session.Send(msg + msg)
 			}

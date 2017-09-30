@@ -1,11 +1,12 @@
-package main
+package lcs
 
 /**
  * Find the Longest Common Subsequence
  * @see https://en.wikipedia.org/wiki/Longest_common_subsequence_problem
  */
 
-func findLCS(A, B []string) []string {
+// Calculate returns the longest common subsequence of two given string slices
+func Calculate(A, B []string) []string {
 	if len(A) == 0 || len(B) == 0 {
 		return []string{}
 	}

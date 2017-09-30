@@ -15,7 +15,6 @@ import (
 	"github.com/fivegreenapples/live-o-results/liveo"
 
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -97,7 +96,7 @@ func (m *managedServer) submitResults(rs liveo.ResultDataSet) {
 	var args interface{} = &rs
 
 	if m.lastResultset != nil {
-		delta := diffResults(*m.lastResultset, rs)
+		delta := m.lastResultset.DeltaTo(rs)
 		method = "Api.SubmitDelta"
 		args = &delta
 	}
@@ -154,125 +153,4 @@ func (m *managedServer) submitResults(rs liveo.ResultDataSet) {
 		}
 
 	}()
-}
-
-func diffResults(A, B liveo.ResultDataSet) liveo.ResultDelta {
-
-	delta := liveo.ResultDelta{
-		Old: A.Hash,
-		New: B.Hash,
-	}
-
-	if A.Results.Title != B.Results.Title {
-		delta.Title = &(B.Results.Title)
-	}
-
-	coursesA, coursesB := []string{}, []string{}
-	coursesBMappings := map[string]liveo.Course{} // so we can find new courses added in B
-	courseBtoAMappings := map[int]int{}           // so we can compare competitors in common courses
-	for i, c := range A.Results.Courses {
-		coursesA = append(coursesA, c.Title+"|"+c.Info)
-		courseBtoAMappings[i] = i // init map assuming courses don't differ
-	}
-	for _, c := range B.Results.Courses {
-		coursesB = append(coursesB, c.Title+"|"+c.Info)
-		coursesBMappings[c.Title+"|"+c.Info] = c
-	}
-	coursesCommon := findLCS(coursesA, coursesB)
-	if len(coursesCommon) != len(coursesA) || len(coursesCommon) != len(coursesB) {
-		// the courses differ
-		coursesDelta := liveo.CoursesDelta{
-			Removed: map[int]int{},
-			Added:   map[int]liveo.Course{},
-		}
-		courseBtoAMappings = map[int]int{} // reset these mappings
-
-		cursorA, cursorB, cursorCom := 0, 0, 0
-		for cursorCom < len(coursesCommon) || cursorA < len(coursesA) || cursorB < len(coursesB) {
-			for cursorCom < len(coursesCommon) &&
-				cursorA < len(coursesA) &&
-				cursorB < len(coursesB) &&
-				coursesCommon[cursorCom] == coursesA[cursorA] &&
-				coursesCommon[cursorCom] == coursesB[cursorB] {
-				// common item
-				// store mapping for competitor comparison
-				courseBtoAMappings[cursorB] = cursorA
-				// move on all cursors
-				cursorCom++
-				cursorA++
-				cursorB++
-			}
-			for cursorA < len(coursesA) &&
-				(cursorCom >= len(coursesCommon) || coursesCommon[cursorCom] != coursesA[cursorA]) {
-				coursesDelta.Removed[cursorA] = 0
-				cursorA++
-			}
-			for cursorB < len(coursesB) &&
-				(cursorCom >= len(coursesCommon) || coursesCommon[cursorCom] != coursesB[cursorB]) {
-				coursesDelta.Added[cursorB] = coursesBMappings[coursesB[cursorB]]
-				cursorB++
-			}
-		}
-
-		delta.Courses = &coursesDelta
-	}
-
-	// Competitor diff analysis. Same as above but for each common group
-	// This diff analysis could do with refactor and generics
-
-	for bIndex, aIndex := range courseBtoAMappings {
-
-		courseA := A.Results.Courses[aIndex]
-		courseB := B.Results.Courses[bIndex]
-		competitorsA, competitorsB := []string{}, []string{}
-		competitorsBMappings := map[string]liveo.Competitor{} // so we can find new competitors added in B
-		for _, c := range courseA.Competitors {
-			competitorsA = append(competitorsA, c.Name+"|"+c.Club+"|"+c.Time.String()+"|"+strconv.FormatBool(c.Valid))
-		}
-		for _, c := range courseB.Competitors {
-			ident := c.Name + "|" + c.Club + "|" + c.Time.String() + "|" + strconv.FormatBool(c.Valid)
-			competitorsB = append(competitorsB, ident)
-			competitorsBMappings[ident] = c
-		}
-		competitorsCommon := findLCS(competitorsA, competitorsB)
-		if len(competitorsCommon) != len(competitorsA) || len(competitorsCommon) != len(competitorsB) {
-			// the competitors differ
-			competitorsDelta := liveo.CompetitorsDelta{
-				Removed: map[int]int{},
-				Added:   map[int]liveo.Competitor{},
-			}
-
-			cursorA, cursorB, cursorCom := 0, 0, 0
-			for cursorCom < len(competitorsCommon) || cursorA < len(competitorsA) || cursorB < len(competitorsB) {
-				for cursorCom < len(competitorsCommon) &&
-					cursorA < len(competitorsA) &&
-					cursorB < len(competitorsB) &&
-					competitorsCommon[cursorCom] == competitorsA[cursorA] &&
-					competitorsCommon[cursorCom] == competitorsB[cursorB] {
-					// common item
-					// move on all cursors
-					cursorCom++
-					cursorA++
-					cursorB++
-				}
-				for cursorA < len(competitorsA) &&
-					(cursorCom >= len(competitorsCommon) || competitorsCommon[cursorCom] != competitorsA[cursorA]) {
-					competitorsDelta.Removed[cursorA] = 0
-					cursorA++
-				}
-				for cursorB < len(competitorsB) &&
-					(cursorCom >= len(competitorsCommon) || competitorsCommon[cursorCom] != competitorsB[cursorB]) {
-					competitorsDelta.Added[cursorB] = competitorsBMappings[competitorsB[cursorB]]
-					cursorB++
-				}
-			}
-
-			if delta.Competitors == nil {
-				delta.Competitors = &map[int]liveo.CompetitorsDelta{}
-			}
-			(*delta.Competitors)[bIndex] = competitorsDelta
-		}
-	}
-
-	return delta
 }

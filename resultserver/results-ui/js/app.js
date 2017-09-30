@@ -67,7 +67,7 @@ App.service("socket", [
 					if (h) h(msgData.Data)
 				})
 			} else {
-				console.log("UNhandled websocket event: "+msgData.Name, msgData.Data)
+				console.log("Unhandled websocket event: "+msgData.Name, msgData.Data)
 			}
 		}
 		handlers.message.push(msgHandler)
@@ -185,17 +185,89 @@ App.service("socket", [
 	}
 ])
 
+App.service("results", [function() {
 
+	var service = {
+		addDelta: function(hash, results, delta) {
+
+			// if (hash != delta.Old) {
+			// 	return false
+			// }
+
+			// clone current result set
+			var newResultSet = {
+				Hash:    hash,
+				Results: angular.copy(results)
+			}
+
+			// copy over updated details
+			if (delta.hasOwnProperty("Title") && delta.Title !== null) {
+				newResultSet.Results.Title = delta.Title
+			}
+
+			if (delta.hasOwnProperty("Courses") && delta.Courses !== null) {
+				var cursorA = 0, cursorB = 0
+				var toAdd = Object.keys(delta.Courses.Added).length
+				newResultSet.Results.Courses = []
+				while (toAdd > 0 || (results.Courses && cursorA < results.Courses.length)) {
+					if (delta.Courses.Added[cursorB]) {
+						newResultSet.Results.Courses.push(delta.Courses.Added[cursorB])
+						toAdd--
+						cursorB++
+						continue
+					}
+
+					if (!delta.Courses.Removed.hasOwnProperty(cursorA)) {
+						newResultSet.Results.Courses.push(results.Courses[cursorA])
+					}
+					cursorA++
+					cursorB++
+				}
+			}
+
+			if (delta.hasOwnProperty("Competitors") && delta.Competitors !== null) {
+				
+				angular.forEach(delta.Competitors, function(compDelta, courseIndex) {
+					var cursorA = 0, cursorB = 0
+					var toAdd = Object.keys(compDelta.Added).length
+					var oldSet = newResultSet.Results.Courses[courseIndex].Competitors
+					var newSet = []
+					while (toAdd > 0 || cursorA < oldSet.length) {
+						if (compDelta.Added[cursorB]) {
+							newSet.push(compDelta.Added[cursorB])
+							toAdd--
+							cursorB++
+							continue
+						}
+						if (!compDelta.Removed.hasOwnProperty(cursorA)) {
+							newSet.push(oldSet[cursorA])
+						}
+						cursorA++
+						cursorB++
+					}
+					newResultSet.Results.Courses[courseIndex].Competitors = newSet
+				})
+			}
+							
+			return newResultSet
+
+		}
+	}
+	return service
+
+}])
 App.controller("mainCtrl", [
     "$scope",
 	"$http",
 	"$timeout",
 	"socket",
-    function($scope, $http, $timeout, Socket) {
+	"results",
+    function($scope, $http, $timeout, Socket, Results) {
 		$scope.socketStatus = {
 			showError: false,
 			connected: false
 		}
+		$scope.resultsHash = 0
 		$scope.results = {
 			Title: "Event Title, Event Date"
 		}
@@ -212,15 +284,26 @@ App.controller("mainCtrl", [
 		$timeout(function() {
 			$scope.socketStatus.showError = true
 		}, 500)
-		Socket.addEventListener("newResults", function(resultSet) {
-			console.log(resultSet)
+		Socket.addEventListener("NewResults", function(resultSet) {
+			console.log("NewResults", resultSet)
 			processResultSet(angular.copy(resultSet))
+		}, $scope)
+		Socket.addEventListener("NewDelta", function(resultDelta) {
+			console.log("NewDelta", resultDelta)
+			var newResultSet = Results.addDelta($scope.resultsHash, $scope.results, resultDelta)
+			if (!newResultSet) {
+				// need to request a full submission
+				console.log("Problem adding delta; todo: request complete resultset")
+				return
+			}
+			console.log("Calculated Results", newResultSet)
+			processResultSet(newResultSet)
 		}, $scope)
 		Socket.connect()
 
 
 		function processResultSet(resultSet) {
-			if (!resultSet || !resultSet.Results ) return
+			if (!resultSet || !resultSet.Results || !resultSet.Results.Title) return
 
 			if (resultSet.Results.Courses) {
 				resultSet.Results.Courses.forEach(function(course, i) {
@@ -236,11 +319,12 @@ App.controller("mainCtrl", [
 						if (timeSeconds <= 9) {
 							timeSeconds = "0"+timeSeconds
 						}
-						competitor.Time = timeMins+":"+timeSeconds
+						competitor.TimeFormatted = timeMins+":"+timeSeconds
 					})
 				})
 			}
-			$scope.results = resultSet.Results
+			$scope.resultsHash = resultSet.Hash
+			$scope.results     = resultSet.Results
 			$scope.storeCourseVisibility()
 		}
 
